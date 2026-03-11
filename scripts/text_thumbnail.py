@@ -41,11 +41,10 @@ def create_thumbnail(words: list[str]) -> Image.Image:
     background = Image.open(BACKGROUND_PATH)
     background = background.resize((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.LANCZOS)
 
-    # Convert to RGB first (handles palette/P mode and RGBA images)
-    if background.mode != "RGB":
-        background = background.convert("RGB")
-
     # Darken the background by 50%
+    # Convert to RGB if needed (to handle RGBA images properly)
+    if background.mode == "RGBA":
+        background = background.convert("RGB")
     background = background.point(lambda p: p // 2)
 
     # Create draw object
