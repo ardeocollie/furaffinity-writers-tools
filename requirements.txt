@@ -1,3 +1,6 @@
 chardet
 odfpy
 python-docx
+rich
+Pillow
+pathlib
