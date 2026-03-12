@@ -11,7 +11,17 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 
 THUMBNAIL_SIZE = 500
 BACKGROUND_PATH = PROJECT_ROOT / "assets" / "images" / "thumbnail_background.png"
+FONTS_DIR = PROJECT_ROOT / "assets" / "fonts"
 OUTPUT_PATH = PROJECT_ROOT / "output" / "thumbnail.png"
+
+
+def find_font_in_directory(font_dir: Path) -> Path | None:
+    """Find a font file (.otf or .ttf) in the specified directory."""
+    font_extensions = {".otf", ".ttf"}
+    for font_file in font_dir.iterdir():
+        if font_file.suffix.lower() in font_extensions:
+            return font_file
+    return None
 
 
 def get_words_from_user() -> list[str]:
@@ -37,58 +47,38 @@ def find_fitting_font_size(texts: list[str], max_width: int, font_path: str) -> 
 
 def create_thumbnail(words: list[str]) -> Image.Image:
     """Create a thumbnail with words overlaid on the background."""
-    # Load and resize background
     background = Image.open(BACKGROUND_PATH)
     background = background.resize((THUMBNAIL_SIZE, THUMBNAIL_SIZE), Image.LANCZOS)
-
-    # Darken the background by 50%
-    # Convert to RGB if needed (to handle RGBA images properly)
     if background.mode == "RGBA":
         background = background.convert("RGB")
     background = background.point(lambda p: p // 2)
-
-    # Create draw object
     draw = ImageDraw.Draw(background)
 
-    # Try to use a system font, fall back to default
-    font_paths = [
-        "/System/fonts/Times New Roman.ttf",  # macOS
-        "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",  # Linux
-        "C:/Windows/Fonts/times.ttf",  # Windows
-    ]
-
+    custom_font_path = find_font_in_directory(FONTS_DIR)
     font = ImageFont.load_default()
-    for font_path in font_paths:
-        try:
-            font = ImageFont.truetype(font_path, 12)
-            break
-        except OSError:
-            continue
+    font_size = 24
+    if custom_font_path:
+        font_size = find_fitting_font_size(words, THUMBNAIL_SIZE - 80, str(custom_font_path))
+        font = ImageFont.truetype(str(custom_font_path), font_size)
 
-    # Find fitting font size
-    max_width = THUMBNAIL_SIZE - 20  # Leave 10px padding on each side
-    font_size = find_fitting_font_size(words, max_width, font_path)
-    font = ImageFont.truetype(font_path, font_size) if font_path else font
+    margin_left = 40
+    margin_right = 40
+    max_lines = 6
+    line_height = font_size + 7
+    max_text_width = THUMBNAIL_SIZE - margin_left - margin_right
+    total_text_height = min(len(words), max_lines) * line_height
+    start_y = (THUMBNAIL_SIZE - total_text_height) // 2
 
-    # Calculate text positioning
-    text_widths = [font.getbbox(word)[2] for word in words]
-    total_width = max(text_widths)
-    start_x = (THUMBNAIL_SIZE - total_width) // 2
-
-    # Center text vertically
-    line_height = font_size + 5
-    total_text_height = len(words) * line_height
-    start_y = (THUMBNAIL_SIZE - total_text_height) // 2 + line_height
-
-    # Draw each word in white
-    for word in words:
-        bbox = font.getbbox(word)
+    for i, word in enumerate(words[:max_lines]):
+        formatted_word = f"• {word}"
+        bbox = font.getbbox(formatted_word)
         text_width = bbox[2]
-        x = start_x + (total_width - text_width) // 2
-        draw.text((x, start_y), word, fill=(255, 255, 255), font=font)
-        start_y += line_height
-
-    return background
+        if text_width > max_text_width:
+            words_per_line = max(1, len(formatted_word) // 2)
+            truncated = formatted_word[:words_per_line] + "\u2010"
+            draw.text((margin_left, start_y + (i * line_height)), truncated, fill=(255, 255, 255), font=font)
+        else:
+            draw.text((margin_left, start_y + (i * line_height)), formatted_word, fill=(255, 255, 255), font=font)
 
 
 def main():
