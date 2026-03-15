@@ -24,7 +24,7 @@ def hyphenate_word(word: str, max_width: int, font, is_last_line: bool = True) -
     # Check if this is a multi-word input (contains a space)
     if " " in word:
         parts = word.split(" ", 1)
-        first_word = parts[0]
+        first_word = parts[0]~
         second_word = parts[1]
 
         # Check if just the first word fits
